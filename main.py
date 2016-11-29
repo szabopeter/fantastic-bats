@@ -68,8 +68,8 @@ class GameState(object):
         self.entities[entity.entity_type][entity.entity_id] = entity
         entity.markedForRemoval = False
 
-    def get_my_wizard(self, entity_id):
-        return self.entities[ETYPE_WIZARD][entity_id]
+    def get_my_wizards(self):
+        return list(self.entities[ETYPE_WIZARD].values())
 
     def get_target_for(self, wizard):
         snaffles = list(self.entities[ETYPE_SNAFFLE].values())
@@ -139,10 +139,9 @@ class GameLogic(object):
 
             gamestate.update(to_update)
 
-            for i in range(2):
+            for wiz in gamestate.get_my_wizards():
                 # Edit this line to indicate the action for each wizard (0 <= thrust <= 150, 0 <= power <= 500)
                 # i.e.: "MOVE x y thrust" or "THROW x y power"
-                wiz = gamestate.get_my_wizard(i)
                 goal = gamestate.get_goal()
                 if wiz.state == STATE_WITH_SNAFFLE:
                     print("THROW %d %d 500" % (goal.x, goal.y,))
