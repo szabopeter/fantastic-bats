@@ -68,6 +68,8 @@ class Entity(object):
         by_dist = sorted(others, key=lambda pair: pair['dist'])
         return by_dist[0]['entity']
 
+    def __str__(self):
+        return "%s%d@%d,%d"%(self.entity_type, self.entity_id, self.p.x, self.p.y)
 
 class GameState(object):
     def __init__(self, my_team_id):

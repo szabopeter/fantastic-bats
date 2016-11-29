@@ -55,7 +55,7 @@ class GameStateTestCase(unittest.TestCase):
         self.assertEqual(1, len(state.entities[ETYPE_SNAFFLE]))
         self.assertEqual(updated_entity, state.entities[ETYPE_SNAFFLE][updated_entity.entity_id])
 
-    def testChosingLastTarget(self):
+    def testChoosingLastTarget(self):
         state = GameState(TEAM_LTR)
         wiz1, wiz2, _, _ = mk_default_wizards()
         snaffle = mk_default_entity(p=P(6000, 2000))
@@ -64,13 +64,31 @@ class GameStateTestCase(unittest.TestCase):
         self.assertEqual(snaffle, wiz1.target)
         self.assertEqual(snaffle, wiz2.target)
 
-    def testChosingNoTarget(self):
+    def testChoosingNoTarget(self):
         state = GameState(TEAM_LTR)
         wiz1, wiz2, _, _ = mk_default_wizards()
         state.update((wiz1, wiz2, ))
         state.set_targets()
         self.assertEqual(ETYPE_NONE, wiz1.target.entity_type)
         self.assertEqual(ETYPE_NONE, wiz2.target.entity_type)
+
+    def testChoosingDifferentTargets(self):
+        """
+        W1---d1+500---snaf1
+        |d1
+        halfway
+        |d2
+        W2
+        Expectation: W1->snaf1, W2->halfway
+        """
+        state = GameState(TEAM_LTR)
+        wiz1, wiz2, _, _ = mk_default_wizards()
+        halfway = mk_default_entity(p=P(4000, (2000+3000)/2))
+        snaf1 = mk_default_entity(p=P(4000+800, 2000))
+        state.update((wiz1, wiz2, snaf1, halfway,))
+        state.set_targets()
+        self.assertEqual(snaf1, wiz1.target)
+        self.assertEqual(halfway, wiz2.target)
 
 if __name__ == '__main__':
     unittest.main()
