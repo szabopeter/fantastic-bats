@@ -17,6 +17,10 @@ class P(object):
     def __init__(self, x, y):
         self.x, self.y = x, y
 
+    def dist(self, other):
+        return (self.x - other.x) ** 2 + (self.y - other.y) ** 2
+
+
 MAPW = 16001
 MAPH = 7501
 POLE_RADIUS = 300
@@ -29,10 +33,12 @@ TEAM_SIZE = 2
 WIZARD_RADIUS = 400
 
 # entity_type: "WIZARD", "OPPONENT_WIZARD" or "SNAFFLE" (or "BLUDGER" after first league)
+ETYPE_NONE = "NONE"
 ETYPE_WIZARD = "WIZARD"
 ETYPE_OPPONENT = "OPPONENT_WIZARD"
 ETYPE_SNAFFLE = "SNAFFLE"
 ETYPE_BLUDGER = "BLUDGER"
+ETYPES = (ETYPE_WIZARD, ETYPE_OPPONENT, ETYPE_SNAFFLE, ETYPE_BLUDGER, )
 
 MAX_MOVE_POWER = 150
 MAX_THROW_POWER = 500
@@ -54,33 +60,39 @@ class Entity(object):
         self.p, self.v, self.state = p, v, state
         self.markedForRemoval = False
 
+    def closest(self, others):
+        if not others:
+            fake_entity = Entity(-1, ETYPE_NONE, P(MAPW//2, MAPH//2), P(0,0), 0)
+            return fake_entity
+        others = [{'entity': e, 'dist': e.p.dist(self.p)} for e in others]
+        by_dist = sorted(others, key=lambda pair: pair['dist'])
+        return by_dist[0]['entity']
+
 
 class GameState(object):
     def __init__(self, my_team_id):
         self.my_team_id = my_team_id
-        self.entities = {}
+        self.entities = dict([(etype, {}) for etype in ETYPES])
+        self.wizards = {}
+        self.snaffles = {}
 
     def update_entity(self, entity):
-        if entity.entity_type not in self.entities:
-            self.entities[entity.entity_type] = {}
+        etype, eid = entity.entity_type, entity.entity_id
+        assert etype in self.entities
 
         # if not entity.entity_id in self.entities[entity.entity_type]:
-        self.entities[entity.entity_type][entity.entity_id] = entity
+        self.entities[etype][eid] = entity
         entity.markedForRemoval = False
 
-    def get_my_wizards(self):
-        return list(self.entities[ETYPE_WIZARD].values())
+    def get_all(self, entity_type):
+        return list(self.entities[entity_type].values())
 
-    def get_target_for(self, wizard):
-        snaffles = list(self.entities[ETYPE_SNAFFLE].values())
-
-        if not snaffles:
-            return P(8000, 3750)
-
-        if len(snaffles) == 1:
-            return snaffles[0].p
-
-        return snaffles[wizard.entity_id % TEAM_SIZE].p
+    def set_targets(self):
+        for wiz in self.get_all(ETYPE_WIZARD):
+            if wiz.state == STATE_WITH_SNAFFLE:
+                wiz.target = None
+            else:
+                wiz.target = wiz.closest(self.get_all(ETYPE_SNAFFLE))
 
     def get_goal(self):
         return POLE_RIGHT if self.my_team_id == TEAM_LTR else POLE_LEFT
@@ -114,6 +126,7 @@ class GameLogic(object):
     def execute():
         my_team_id = int(input())  # if 0 you need to score on the right of the map, if 1 you need to score on the left
         gamestate = GameState(my_team_id)
+        goal = gamestate.get_goal()
 
         # game loop
         while True:
@@ -138,17 +151,16 @@ class GameLogic(object):
                 to_update.append(entity)
 
             gamestate.update(to_update)
+            gamestate.set_targets()
 
-            for wiz in gamestate.get_my_wizards():
+            for wiz in gamestate.get_all(ETYPE_WIZARD):
                 # Edit this line to indicate the action for each wizard (0 <= thrust <= 150, 0 <= power <= 500)
                 # i.e.: "MOVE x y thrust" or "THROW x y power"
-                goal = gamestate.get_goal()
                 if wiz.state == STATE_WITH_SNAFFLE:
                     print("THROW %d %d 500" % (goal.x, goal.y,))
                 else:
-                    # TODO: move to closest snaffle
-                    target = mkp(gamestate.get_target_for(wiz), my_team_id)
-                    print("MOVE %d %d 100" % (target.x, target.y,))
+                    target = mkp(wiz.target.p, my_team_id)
+                    print("MOVE %d %d 150" % (target.x, target.y,))
 
 
 if __name__ == "__main__":
