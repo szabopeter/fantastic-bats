@@ -45,7 +45,7 @@ def mkp(pt, team_id):
     if team_id == TEAM_LTR:
         return pt
     else:
-        return P(MAPW-1-pt.x, pt.y)
+        return P(MAPW - 1 - pt.x, pt.y)
 
 
 class Entity(object):
@@ -59,32 +59,37 @@ class GameState(object):
     def __init__(self, my_team_id):
         self.my_team_id = my_team_id
         self.entities = {}
-    
+
     def update_entity(self, entity):
         if entity.entity_type not in self.entities:
             self.entities[entity.entity_type] = {}
-        
+
         # if not entity.entity_id in self.entities[entity.entity_type]:
         self.entities[entity.entity_type][entity.entity_id] = entity
         entity.markedForRemoval = False
-        
+
     def get_my_wizard(self, entity_id):
         return self.entities[ETYPE_WIZARD][entity_id]
-        
+
     def get_target_for(self, wizard):
-        if not self.entities[ETYPE_SNAFFLE]:
+        snaffles = list(self.entities[ETYPE_SNAFFLE].values())
+
+        if not snaffles:
             return P(8000, 3750)
-        
-        return list(self.entities[ETYPE_SNAFFLE].values())[0].p
-        
+
+        if len(snaffles) == 1:
+            return snaffles[0].p
+
+        return snaffles[wizard.entity_id % TEAM_SIZE].p
+
     def get_goal(self):
         return POLE_RIGHT if self.my_team_id == TEAM_LTR else POLE_LEFT
-        
+
     def mark_for_removal(self):
         for entity_type in self.entities.keys():
             for entity in self.entities[entity_type].values():
                 entity.markedForRemoval = True
-    
+
     def remove_marked_entities(self):
         for entity_type in self.entities.keys():
             to_remove = []
@@ -140,11 +145,11 @@ class GameLogic(object):
                 wiz = gamestate.get_my_wizard(i)
                 goal = gamestate.get_goal()
                 if wiz.state == STATE_WITH_SNAFFLE:
-                    print("THROW %d %d 500"%(goal.x, goal.y,))
+                    print("THROW %d %d 500" % (goal.x, goal.y,))
                 else:
-                    #TODO: move to closest snaffle
+                    # TODO: move to closest snaffle
                     target = mkp(gamestate.get_target_for(wiz), my_team_id)
-                    print("MOVE %d %d 100"%(target.x, target.y,))
+                    print("MOVE %d %d 100" % (target.x, target.y,))
 
 
 if __name__ == "__main__":
