@@ -23,6 +23,8 @@ def mk_default_entity(**kwargs):
             e.p = v
         elif k == 'entity_type':
             e.entity_type = v
+        elif k == 'status':
+            e.status = v
         else:
             raise AttributeError("Unknown attribute: " + k)
     return e
@@ -89,6 +91,16 @@ class GameStateTestCase(unittest.TestCase):
         state.set_targets()
         self.assertEqual(snaf1, wiz1.target, "%s != %s"%(snaf1, wiz1.target, ))
         self.assertEqual(halfway, wiz2.target, "%s != %s"%(halfway, wiz2.target, ))
+
+    def testThrowing(self):
+        state = GameState(TEAM_LTR)
+        same_pt = P(5000,2000)
+        wiz, wiz2, _, _ = mk_default_wizards()
+        snaf = mk_default_entity(p=same_pt)
+        wiz.p, wiz.state, wiz.target = same_pt, STATE_WITH_SNAFFLE, snaf
+        state.update((wiz, wiz2, snaf))
+        state.set_targets()
+        self.assertIsNone(wiz.target, "target is %s instead of None"%wiz.target)
 
 if __name__ == '__main__':
     unittest.main()
