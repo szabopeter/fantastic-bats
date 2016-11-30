@@ -47,18 +47,12 @@ TEAM_LTR = 0
 TEAM_RTL = 1
 
 
-def mkp(pt, team_id):
-    if team_id == TEAM_LTR:
-        return pt
-    else:
-        return P(MAPW - 1 - pt.x, pt.y)
-
-
 class Entity(object):
     def __init__(self, entity_id, entity_type, p, v, state):
         self.entity_id, self.entity_type = entity_id, entity_type
         self.p, self.v, self.state = p, v, state
         self.markedForRemoval = False
+        self.target = self.aim = None
 
     def closest(self, others):
         if not others:
@@ -77,6 +71,8 @@ class GameState(object):
         self.entities = dict([(etype, {}) for etype in ETYPES])
         self.wizards = {}
         self.snaffles = {}
+        self.mana = 0
+        # IMPROVEMENT: count opponent mana (complex)
 
     def update_entity(self, entity):
         etype, eid = entity.entity_type, entity.entity_id
@@ -91,16 +87,20 @@ class GameState(object):
 
     def set_targets(self):
         wizards = self.get_all(ETYPE_WIZARD)
+        targets = self.get_all(ETYPE_SNAFFLE)
         for wiz in wizards:
             if wiz.state == STATE_WITH_SNAFFLE:
                 wiz.target = None
+                wiz.aim = self.get_goal()
             else:
-                wiz.target = wiz.closest(self.get_all(ETYPE_SNAFFLE))
+                wiz.target = wiz.closest(targets)
+                wiz.aim = None
 
         wiz1, wiz2 = wizards
         if wiz1.target == wiz2.target:
-            targets = self.get_all(ETYPE_SNAFFLE)
-            if len(targets) > 1:
+            if len(targets) > 1 and wiz1.target is not None:
+                if not wiz1.target in targets:
+                    dbg("%s not in %s"%(wiz1.target, [str(x) for x in targets],))
                 targets.remove(wiz1.target)
                 alttarg1 = wiz1.closest(targets)
                 alttarg2 = wiz2.closest(targets)
@@ -133,6 +133,7 @@ class GameState(object):
         for entity in entities:
             self.update_entity(entity)
         self.remove_marked_entities()
+        self.mana += 1
 
 
 class GameLogic(object):
@@ -164,7 +165,7 @@ class GameLogic(object):
                 vx = int(vx)
                 vy = int(vy)
                 state = int(state)
-                entity = Entity(entity_id, entity_type, mkp(P(x, y), my_team_id), P(vx, vy), state)
+                entity = Entity(entity_id, entity_type, P(x, y), P(vx, vy), state)
                 to_update.append(entity)
 
             gamestate.update(to_update)
@@ -173,11 +174,10 @@ class GameLogic(object):
             for wiz in gamestate.get_all(ETYPE_WIZARD):
                 # Edit this line to indicate the action for each wizard (0 <= thrust <= 150, 0 <= power <= 500)
                 # i.e.: "MOVE x y thrust" or "THROW x y power"
-                if wiz.state == STATE_WITH_SNAFFLE:
-                    print("THROW %d %d 500" % (goal.x, goal.y,))
+                if wiz.aim:
+                    print("THROW %d %d 500" % (wiz.aim.x, wiz.aim.y,))
                 else:
-                    target = mkp(wiz.target.p, my_team_id)
-                    print("MOVE %d %d 150" % (target.x, target.y,))
+                    print("MOVE %d %d 150" % (wiz.target.p.x, wiz.target.p.y,))
 
 
 if __name__ == "__main__":

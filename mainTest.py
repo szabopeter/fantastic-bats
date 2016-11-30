@@ -101,6 +101,25 @@ class GameStateTestCase(unittest.TestCase):
         state.update((wiz, wiz2, snaf))
         state.set_targets()
         self.assertIsNone(wiz.target, "target is %s instead of None"%wiz.target)
+        self.assertEqual(state.get_goal(), wiz.aim)
+
+    def testThrowingSafely(self):
+        state = GameState(TEAM_LTR)
+        same_pt = P(5000,2000)
+        wiz, wiz2, op1, _ = mk_default_wizards()
+        snaf = mk_default_entity(p=same_pt)
+        wiz.p, wiz.state, wiz.target = same_pt, STATE_WITH_SNAFFLE, snaf
+        op1.p = P(6000, 2000)
+        state.update((wiz, wiz2, op1, snaf))
+        state.set_targets()
+        self.assertIsNone(wiz.target, "target is %s instead of None"%wiz.target)
+        # TODO self.assertNotEqual(state.get_goal(), wiz.aim)
+
+    def testObliviate(self):
+        pass
+        # Should execute obliviate when bludger is closing in.
+
+    # TODO: introduce commands
 
 if __name__ == '__main__':
     unittest.main()
