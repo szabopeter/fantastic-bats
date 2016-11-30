@@ -90,11 +90,26 @@ class GameState(object):
         return list(self.entities[entity_type].values())
 
     def set_targets(self):
-        for wiz in self.get_all(ETYPE_WIZARD):
+        wizards = self.get_all(ETYPE_WIZARD)
+        for wiz in wizards:
             if wiz.state == STATE_WITH_SNAFFLE:
                 wiz.target = None
             else:
                 wiz.target = wiz.closest(self.get_all(ETYPE_SNAFFLE))
+
+        wiz1, wiz2 = wizards
+        if wiz1.target == wiz2.target:
+            targets = self.get_all(ETYPE_SNAFFLE)
+            if len(targets) > 1:
+                targets.remove(wiz1.target)
+                alttarg1 = wiz1.closest(targets)
+                alttarg2 = wiz2.closest(targets)
+                altdist1 = wiz1.p.dist(alttarg1.p)
+                altdist2 = wiz2.p.dist(alttarg2.p)
+                if altdist1 < altdist2:
+                    wiz1.target = alttarg1
+                else:
+                    wiz2.target = alttarg1
 
     def get_goal(self):
         return POLE_RIGHT if self.my_team_id == TEAM_LTR else POLE_LEFT

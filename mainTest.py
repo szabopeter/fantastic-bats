@@ -87,8 +87,8 @@ class GameStateTestCase(unittest.TestCase):
         snaf1 = mk_default_entity(p=P(4000+800, 2000))
         state.update((wiz1, wiz2, snaf1, halfway,))
         state.set_targets()
-        self.assertEqual(snaf1, wiz1.target)
-        self.assertEqual(halfway, wiz2.target)
+        self.assertEqual(snaf1, wiz1.target, "%s != %s"%(snaf1, wiz1.target, ))
+        self.assertEqual(halfway, wiz2.target, "%s != %s"%(halfway, wiz2.target, ))
 
 if __name__ == '__main__':
     unittest.main()
