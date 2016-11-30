@@ -63,16 +63,16 @@ class GameStateTestCase(unittest.TestCase):
         snaffle = mk_default_entity(p=P(6000, 2000))
         state.update((wiz1, wiz2, snaffle))
         state.set_targets()
-        self.assertEqual(snaffle, wiz1.target)
-        self.assertEqual(snaffle, wiz2.target)
+        self.assertEqual(snaffle.p, wiz1.cmd.target)
+        self.assertEqual(snaffle.p, wiz2.cmd.target)
 
     def testChoosingNoTarget(self):
         state = GameState(TEAM_LTR)
         wiz1, wiz2, _, _ = mk_default_wizards()
         state.update((wiz1, wiz2, ))
         state.set_targets()
-        self.assertEqual(ETYPE_NONE, wiz1.target.entity_type)
-        self.assertEqual(ETYPE_NONE, wiz2.target.entity_type)
+        self.assertIsNone(wiz1.cmd)
+        self.assertIsNone(wiz2.cmd)
 
     def testChoosingDifferentTargets(self):
         """
@@ -89,8 +89,10 @@ class GameStateTestCase(unittest.TestCase):
         snaf1 = mk_default_entity(p=P(4000+800, 2000))
         state.update((wiz1, wiz2, snaf1, halfway,))
         state.set_targets()
-        self.assertEqual(snaf1, wiz1.target, "%s != %s"%(snaf1, wiz1.target, ))
-        self.assertEqual(halfway, wiz2.target, "%s != %s"%(halfway, wiz2.target, ))
+        self.assertIsInstance(wiz1.cmd, CmdMove)
+        self.assertIsInstance(wiz2.cmd, CmdMove)
+        self.assertEqual(snaf1.p, wiz1.cmd.target, "%s != %s"%(snaf1, wiz1.cmd, ))
+        self.assertEqual(halfway.p, wiz2.cmd.target, "%s != %s"%(halfway, wiz2.cmd, ))
 
     def testThrowing(self):
         state = GameState(TEAM_LTR)
@@ -100,8 +102,8 @@ class GameStateTestCase(unittest.TestCase):
         wiz.p, wiz.state, wiz.target = same_pt, STATE_WITH_SNAFFLE, snaf
         state.update((wiz, wiz2, snaf))
         state.set_targets()
-        self.assertIsNone(wiz.target, "target is %s instead of None"%wiz.target)
-        self.assertEqual(state.get_goal(), wiz.aim)
+        self.assertIsInstance(wiz.cmd, CmdThrow)
+        self.assertEqual(state.get_goal(), wiz.cmd.aim)
 
     def testThrowingSafely(self):
         state = GameState(TEAM_LTR)
@@ -112,14 +114,13 @@ class GameStateTestCase(unittest.TestCase):
         op1.p = P(6000, 2000)
         state.update((wiz, wiz2, op1, snaf))
         state.set_targets()
-        self.assertIsNone(wiz.target, "target is %s instead of None"%wiz.target)
-        # TODO self.assertNotEqual(state.get_goal(), wiz.aim)
+        self.assertIsInstance(wiz.cmd, CmdThrow)
+        # TODO self.assertNotEqual(state.get_goal(), wiz.cmd.aim)
 
     def testObliviate(self):
         pass
         # Should execute obliviate when bludger is closing in.
 
-    # TODO: introduce commands
 
 if __name__ == '__main__':
     unittest.main()

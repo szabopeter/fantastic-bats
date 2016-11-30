@@ -1,6 +1,7 @@
 #!env python3
 
 import sys
+import itertools
 # import math
 
 
@@ -20,6 +21,34 @@ class P(object):
     def dist(self, other):
         return (self.x - other.x) ** 2 + (self.y - other.y) ** 2
 
+    def dists(self, others):
+        return [ {'e': other, 'dist': self.dist(other)} for other in others ]
+
+
+class Cmd(object):
+    def __init__(self, cmd_type):
+        # TODO remove
+        assert cmd_type in CMDS
+        self.cmd_type = cmd_type
+
+    def __str__(self):
+        raise Exception("Uninitialized command!")
+
+class CmdMove(Cmd):
+    def __init__(self, target, thrust):
+        self.target = target
+        self.thrust = thrust
+
+    def __str__(self):
+        return "MOVE %d %d %d" % (self.target.x, self.target.y, self.thrust,)
+
+class CmdThrow(Cmd):
+    def __init__(self, aim, thrust):
+        self.aim = aim
+        self.thrust = thrust
+
+    def __str__(self):
+        return "THROW %d %d %d" % (self.aim.x, self.aim.y, self.thrust,)
 
 MAPW = 16001
 MAPH = 7501
@@ -46,13 +75,14 @@ MAX_THROW_POWER = 500
 TEAM_LTR = 0
 TEAM_RTL = 1
 
+CMD_CLUELESS = CmdMove(P(MAPW//2,MAPH//2), 42)
+
 
 class Entity(object):
     def __init__(self, entity_id, entity_type, p, v, state):
         self.entity_id, self.entity_type = entity_id, entity_type
         self.p, self.v, self.state = p, v, state
         self.markedForRemoval = False
-        self.target = self.aim = None
 
     def closest(self, others):
         if not others:
@@ -81,35 +111,47 @@ class GameState(object):
         # if not entity.entity_id in self.entities[entity.entity_type]:
         self.entities[etype][eid] = entity
         entity.markedForRemoval = False
+        entity.cmd = None
 
     def get_all(self, entity_type):
         return list(self.entities[entity_type].values())
 
     def set_targets(self):
         wizards = self.get_all(ETYPE_WIZARD)
-        targets = self.get_all(ETYPE_SNAFFLE)
-        for wiz in wizards:
-            if wiz.state == STATE_WITH_SNAFFLE:
-                wiz.target = None
-                wiz.aim = self.get_goal()
-            else:
-                wiz.target = wiz.closest(targets)
-                wiz.aim = None
+        targets = [target.p for target in self.get_all(ETYPE_SNAFFLE)]
 
-        wiz1, wiz2 = wizards
-        if wiz1.target == wiz2.target:
-            if len(targets) > 1 and wiz1.target is not None:
-                if not wiz1.target in targets:
-                    dbg("%s not in %s"%(wiz1.target, [str(x) for x in targets],))
-                targets.remove(wiz1.target)
-                alttarg1 = wiz1.closest(targets)
-                alttarg2 = wiz2.closest(targets)
-                altdist1 = wiz1.p.dist(alttarg1.p)
-                altdist2 = wiz2.p.dist(alttarg2.p)
-                if altdist1 < altdist2:
-                    wiz1.target = alttarg1
-                else:
-                    wiz2.target = alttarg1
+        dists = {}
+        for wiz in wizards[:]:
+            if wiz.state == STATE_WITH_SNAFFLE:
+                wiz.cmd = CmdThrow(self.get_goal(), MAX_THROW_POWER)
+                wizards.remove(wiz)
+            else:
+                dists[wiz] = {}
+                for target in targets:
+                    dists[wiz][target] = wiz.p.dist(target)
+
+        if not targets:
+            return
+
+        random_target = targets[0] 
+
+        while len(targets) < len(wizards):
+            targets.append(random_target)
+
+        permutations = []
+        for p in itertools.permutations(targets, len(wizards)):
+            pd = 0
+            for i, wiz in enumerate(wizards):
+                target = p[i]
+                if wiz not in dists or target not in dists[wiz]:
+                    dists[wiz][target] = target.dist(wiz.p)
+                pd += dists[wiz][target] 
+            permutations.append({'d': pd, 'p':p})
+
+        permutations.sort(key=lambda pair: pair['d'])
+        best = permutations[0]['p']
+        for i, wiz in enumerate(wizards):
+            wiz.cmd = CmdMove(best[i], MAX_MOVE_POWER)
 
     def get_goal(self):
         return POLE_RIGHT if self.my_team_id == TEAM_LTR else POLE_LEFT
@@ -174,10 +216,11 @@ class GameLogic(object):
             for wiz in gamestate.get_all(ETYPE_WIZARD):
                 # Edit this line to indicate the action for each wizard (0 <= thrust <= 150, 0 <= power <= 500)
                 # i.e.: "MOVE x y thrust" or "THROW x y power"
-                if wiz.aim:
-                    print("THROW %d %d 500" % (wiz.aim.x, wiz.aim.y,))
+                if wiz.cmd:
+                    print(str(wiz.cmd))
                 else:
-                    print("MOVE %d %d 150" % (wiz.target.p.x, wiz.target.p.y,))
+                    print(CMD_CLUELESS)
+                    dbg("Nobody expects the spanish inquisition.")
 
 
 if __name__ == "__main__":
