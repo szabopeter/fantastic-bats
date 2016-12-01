@@ -37,6 +37,13 @@ def mk_default_wizards():
     return wiz1, wiz2, op1, op2
 
 
+class GeomTestCase(unittest.TestCase):
+    def testMinus(self):
+        a = P(300, 100)
+        b = P(250, 110)
+        self.assertEqual(P(-50, 10), b.minus(a))
+
+
 class EntityTestCase(unittest.TestCase):
     def testClosest(self):
         o = mk_default_entity(p=P(100,50))
@@ -47,6 +54,14 @@ class EntityTestCase(unittest.TestCase):
 
 
 class GameStateTestCase(unittest.TestCase):
+    def testGetAll(self):
+        state = GameState(TEAM_LTR)
+        w1, w2, o1, o2 = mk_default_wizards()
+        state.update((w1, w2, o1, o2, mk_default_entity(), ))
+        self.assertSetEqual(set((w1, w2,)), set(state.get_all(ETYPE_WIZARD)))
+        self.assertSetEqual(set((o1, o2,)), set(state.get_all(ETYPE_OPPONENT)))
+        self.assertSetEqual(set((w1, w2, o1, o2,)), set(state.get_all(ETYPE_WIZARD, ETYPE_OPPONENT)))
+
     def testRemovalOnUpdate(self):
         state = GameState(TEAM_LTR)
         updated_entity = mk_default_entity()
@@ -115,7 +130,7 @@ class GameStateTestCase(unittest.TestCase):
         state.update((wiz, wiz2, op1, snaf))
         state.set_targets()
         self.assertIsInstance(wiz.cmd, CmdThrow)
-        # TODO self.assertNotEqual(state.get_goal(), wiz.cmd.aim)
+        #self.assertNotEqual(state.get_goal(), wiz.cmd.aim)
 
     def testObliviate(self):
         pass

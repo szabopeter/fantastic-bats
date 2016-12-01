@@ -18,6 +18,18 @@ class P(object):
     def __init__(self, x, y):
         self.x, self.y = x, y
 
+    def __repr__(self):
+        return "P(%d,%d)"%(self.x, self.y,)
+
+    def __eq__(self, other):
+        return (self.x, self.y,) == (other.x, other.y,)
+
+    def __hash__(self):
+        return self.x
+
+    def minus(self, other):
+        return P(self.x - other.x, self.y - other.y)
+
     def dist(self, other):
         return (self.x - other.x) ** 2 + (self.y - other.y) ** 2
 
@@ -26,11 +38,6 @@ class P(object):
 
 
 class Cmd(object):
-    def __init__(self, cmd_type):
-        # TODO remove
-        assert cmd_type in CMDS
-        self.cmd_type = cmd_type
-
     def __str__(self):
         raise Exception("Uninitialized command!")
 
@@ -113,8 +120,18 @@ class GameState(object):
         entity.markedForRemoval = False
         entity.cmd = None
 
-    def get_all(self, entity_type):
-        return list(self.entities[entity_type].values())
+    def get_all(self, *entity_types):
+        entities = []
+        for l in [ list(self.entities[etype].values()) for etype in entity_types ]:
+            entities.extend(l)
+        return entities
+
+    def aim_from(self, pt):
+        g = self.get_goal()
+        obst = self.get_all(ETYPE_OPPONENT, ETYPE_BLUDGER)
+        v = g.minus(pt)
+        # ...
+        return g
 
     def set_targets(self):
         wizards = self.get_all(ETYPE_WIZARD)
@@ -123,7 +140,8 @@ class GameState(object):
         dists = {}
         for wiz in wizards[:]:
             if wiz.state == STATE_WITH_SNAFFLE:
-                wiz.cmd = CmdThrow(self.get_goal(), MAX_THROW_POWER)
+                aim = self.aim_from(wiz.p)
+                wiz.cmd = CmdThrow(aim, MAX_THROW_POWER)
                 wizards.remove(wiz)
             else:
                 dists[wiz] = {}
