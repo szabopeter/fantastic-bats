@@ -29,6 +29,7 @@ def mk_default_entity(**kwargs):
             raise AttributeError("Unknown attribute: " + k)
     return e
 
+
 def mk_default_wizards():
     wiz1 = mk_default_entity(entity_type=ETYPE_WIZARD, p=P(4000, 2000))
     wiz2 = mk_default_entity(entity_type=ETYPE_WIZARD, p=P(4000, 3000))
@@ -37,12 +38,22 @@ def mk_default_wizards():
     return wiz1, wiz2, op1, op2
 
 
+simplified_throwing_directions = generate_directional_coordinates(0, 360, 90)
+
 class GeomTestCase(unittest.TestCase):
     def testMinus(self):
         a = P(300, 100)
         b = P(250, 110)
         self.assertEqual(P(-50, 10), b.minus(a))
 
+    def testPlus(self):
+        a = P(300, 100)
+        v = P(-10, 30)
+        self.assertEqual(P(290, 130), a.plus(v))
+
+    def testTimes(self):
+        v = P(3, -4)
+        self.assertEqual(P(15, -20), v.times(5))
 
 class EntityTestCase(unittest.TestCase):
     def testClosest(self):
@@ -110,8 +121,7 @@ class GameStateTestCase(unittest.TestCase):
         self.assertEqual(halfway.p, wiz2.cmd.target, "%s != %s"%(halfway, wiz2.cmd, ))
 
     def testThrowing(self):
-        state = GameState(TEAM_LTR)
-        #state.set_goal(P(8000, 2000))
+        state = GameState(TEAM_LTR, simplified_throwing_directions)
         same_pt = P(5000,2000)
         wiz, wiz2, _, _ = mk_default_wizards()
         snaf = mk_default_entity(p=same_pt)
@@ -119,7 +129,7 @@ class GameStateTestCase(unittest.TestCase):
         state.update((wiz, wiz2, snaf))
         state.set_targets()
         self.assertIsInstance(wiz.cmd, CmdThrow)
-        self.assertEqual(state.get_goal(), wiz.cmd.aim)
+        self.assertEqual(same_pt.plus(P(APPROX_THROW_DIST, 0)), wiz.cmd.aim)
 
     def testThrowingSafely(self):
         state = GameState(TEAM_LTR)

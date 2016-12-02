@@ -30,6 +30,12 @@ class P(object):
     def minus(self, other):
         return P(self.x - other.x, self.y - other.y)
 
+    def plus(self, other):
+        return P(self.x + other.x, self.y + other.y)
+
+    def times(self, factor):
+        return P(self.x * factor, self.y * factor)
+
     def dist(self, other):
         return (self.x - other.x) ** 2 + (self.y - other.y) ** 2
 
@@ -139,8 +145,7 @@ class GameState(object):
         return entities
 
     def guess_throw(self, pt, d):
-        # todo
-        return self.get_goal()
+        return pt.plus(d.times(APPROX_THROW_DIST))
 
     def score_for_snafflepos(self, pt):
         return 10000 / (1 + pt.dist(self.get_goal()))
@@ -149,7 +154,7 @@ class GameState(object):
         obst = self.get_all(ETYPE_OPPONENT, ETYPE_BLUDGER)
         opts = [ self.guess_throw(pt, d) for d in self.throw_directions ]
         opts = [ {'goal': opt, 'score': self.score_for_snafflepos(opt)} for opt in opts ]
-        best_opt = min(opts, key=lambda x:x['score'])
+        best_opt = max(opts, key=lambda x:x['score'])
         return best_opt['goal']
 
     def set_targets(self):
