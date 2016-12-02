@@ -38,7 +38,8 @@ def mk_default_wizards():
     return wiz1, wiz2, op1, op2
 
 
-simplified_throwing_directions = generate_directional_coordinates(0, 360, 90)
+RIGHT, UP, LEFT, DOWN = generate_directional_coordinates(0, 360, 90)
+simplified_throwing_directions = (UP, DOWN, LEFT, RIGHT)
 
 class GeomTestCase(unittest.TestCase):
     def testMinus(self):
@@ -128,11 +129,12 @@ class GameStateTestCase(unittest.TestCase):
         wiz.p, wiz.state, wiz.target = same_pt, STATE_WITH_SNAFFLE, snaf
         state.update((wiz, wiz2, snaf))
         state.set_targets()
+        expected_aim = state.guess_throw(same_pt, RIGHT)
         self.assertIsInstance(wiz.cmd, CmdThrow)
-        self.assertEqual(same_pt.plus(P(APPROX_THROW_DIST, 0)), wiz.cmd.aim)
+        self.assertEqual(expected_aim, wiz.cmd.aim)
 
     def testThrowingSafely(self):
-        state = GameState(TEAM_LTR)
+        state = GameState(TEAM_LTR, simplified_throwing_directions)
         same_pt = P(5000,2000)
         wiz, wiz2, op1, _ = mk_default_wizards()
         snaf = mk_default_entity(p=same_pt)
@@ -140,8 +142,9 @@ class GameStateTestCase(unittest.TestCase):
         op1.p = P(6000, 2000)
         state.update((wiz, wiz2, op1, snaf))
         state.set_targets()
+        expected_aim = state.guess_throw(same_pt, DOWN)
         self.assertIsInstance(wiz.cmd, CmdThrow)
-        #self.assertNotEqual(state.get_goal(), wiz.cmd.aim)
+        #self.assertEqual(expected_aim, wiz.cmd.aim)
 
     def testObliviate(self):
         pass
