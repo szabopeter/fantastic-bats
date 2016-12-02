@@ -135,6 +135,18 @@ class GameStateTestCase(unittest.TestCase):
         self.assertIsInstance(wiz.cmd, CmdThrow)
         self.assertEqual(expected_aim, wiz.cmd.aim)
 
+    def testThrowingFromGoalLine(self):
+        state = GameState(TEAM_LTR, generate_directional_coordinates(0, 360, 45))
+        goal = state.get_goal()
+        same_pt = goal.minus(P(20, 300))
+        wiz, wiz2, _, _ = mk_default_wizards()
+        snaf = mk_default_entity(p=same_pt)
+        wiz.p, wiz.state, wiz.target = same_pt, STATE_WITH_SNAFFLE, snaf
+        state.update((wiz, wiz2, snaf))
+        state.set_targets()
+        self.assertIsInstance(wiz.cmd, CmdThrow)
+        self.assertEqual(goal, wiz.cmd.aim)
+
     def testThrowingSafely(self):
         state = GameState(TEAM_LTR, simplified_throwing_directions)
         same_pt = P(5000,2000)

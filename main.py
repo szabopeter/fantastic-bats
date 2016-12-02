@@ -37,7 +37,7 @@ class P(object):
         return P(self.x * factor, self.y * factor)
 
     def dist(self, other):
-        return (self.x - other.x) ** 2 + (self.y - other.y) ** 2
+        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2)**0.5
 
     def dists(self, others):
         return [{'e': other, 'dist': self.dist(other)} for other in others]
@@ -92,6 +92,7 @@ TEAM_RTL = 1
 
 CMD_CLUELESS = CmdMove(P(MAPW//2, MAPH//2), 42)
 APPROX_THROW_DIST = 600
+GOAL_LINE_PROXIMITY = APPROX_THROW_DIST
 
 
 def generate_directional_coordinates(startdeg, enddeg, step):
@@ -155,6 +156,9 @@ class GameState(object):
         return 10000 / (1 + pt.dist(self.get_goal()))
 
     def aim_from(self, pt):
+        if pt.dist(self.get_goal()) < GOAL_LINE_PROXIMITY:
+            return self.get_goal()
+
         obst = self.get_all(ETYPE_OPPONENT, ETYPE_BLUDGER)
         opts = [self.guess_throw(pt, d) for d in self.throw_directions]
         opts = [{'goal': opt, 'score': self.score_for_snafflepos(opt)} for opt in opts]
