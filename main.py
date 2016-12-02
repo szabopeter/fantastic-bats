@@ -2,7 +2,7 @@
 
 import sys
 import itertools
-# import math
+import math
 
 
 def dbg(msg):
@@ -83,7 +83,18 @@ TEAM_LTR = 0
 TEAM_RTL = 1
 
 CMD_CLUELESS = CmdMove(P(MAPW//2,MAPH//2), 42)
+APPROX_THROW_DIST = 600
 
+
+def generate_directional_coordinates(startdeg, enddeg, step):
+    directions = []
+    for dg in range(startdeg, enddeg, step):
+        rad = math.pi * dg / 180
+        y = math.sin(rad)
+        x = math.cos(rad)
+        directions.append(P(x, y))
+    return directions
+THROW_DIRECTIONS = generate_directional_coordinates(0, 360, 10)
 
 class Entity(object):
     def __init__(self, entity_id, entity_type, p, v, state):
@@ -103,12 +114,13 @@ class Entity(object):
         return "%s%d@%d,%d"%(self.entity_type, self.entity_id, self.p.x, self.p.y)
 
 class GameState(object):
-    def __init__(self, my_team_id):
+    def __init__(self, my_team_id, throw_directions = generate_directional_coordinates(0, 360, 10)):
         self.my_team_id = my_team_id
         self.entities = dict([(etype, {}) for etype in ETYPES])
         self.wizards = {}
         self.snaffles = {}
         self.mana = 0
+        self.throw_directions = throw_directions
         # IMPROVEMENT: count opponent mana (complex)
 
     def update_entity(self, entity):
@@ -126,12 +138,19 @@ class GameState(object):
             entities.extend(l)
         return entities
 
+    def guess_throw(self, pt, d):
+        # todo
+        return self.get_goal()
+
+    def score_for_snafflepos(self, pt):
+        return 10000 / (1 + pt.dist(self.get_goal()))
+
     def aim_from(self, pt):
-        g = self.get_goal()
         obst = self.get_all(ETYPE_OPPONENT, ETYPE_BLUDGER)
-        v = g.minus(pt)
-        # ...
-        return g
+        opts = [ self.guess_throw(pt, d) for d in self.throw_directions ]
+        opts = [ {'goal': opt, 'score': self.score_for_snafflepos(opt)} for opt in opts ]
+        best_opt = min(opts, key=lambda x:x['score'])
+        return best_opt['goal']
 
     def set_targets(self):
         wizards = self.get_all(ETYPE_WIZARD)
@@ -204,6 +223,7 @@ class GameLogic(object):
     def execute():
         my_team_id = int(input())  # if 0 you need to score on the right of the map, if 1 you need to score on the left
         gamestate = GameState(my_team_id)
+        gamestate.configure_throw_directions(THROW_DIRECTIONS)
         goal = gamestate.get_goal()
 
         # game loop

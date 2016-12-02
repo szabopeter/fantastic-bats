@@ -111,6 +111,7 @@ class GameStateTestCase(unittest.TestCase):
 
     def testThrowing(self):
         state = GameState(TEAM_LTR)
+        #state.set_goal(P(8000, 2000))
         same_pt = P(5000,2000)
         wiz, wiz2, _, _ = mk_default_wizards()
         snaf = mk_default_entity(p=same_pt)
