@@ -155,7 +155,16 @@ class GameState(object):
 
     def score_for_snafflepos(self, pt, obst):
         SCOREMAX_DIST = 20000 * 20000
-        SNAFFLE_AIM_WEIGHT_GOALDIST = 1000
+        # POS16 (THROWDIST = 600)
+        # SNAFFLE_AIM_WEIGHT_GOALDIST = 1000
+        # SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
+
+        # POS38 (THROWDIST = 600)
+        # POS19 (THROWDIST = 900)
+        # POS44 (THROWDIST = 1100)
+        # POS8 (THROWDIST = 1200)
+        # POS61 (THROWDIST = 1500)
+        SNAFFLE_AIM_WEIGHT_GOALDIST = 100
         SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
         goal_dist = SCOREMAX_DIST / (1 + pt.dist(self.get_goal())) ** 2
         obst_dist = sum([SCOREMAX_DIST / (1 + pt.dist(obs.p)) ** 2 for obs in obst])/len(obst) if obst else 0
