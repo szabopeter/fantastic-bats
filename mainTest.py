@@ -41,6 +41,7 @@ def mk_default_wizards():
 RIGHT, UP, LEFT, DOWN = generate_directional_coordinates(0, 360, 90)
 simplified_throwing_directions = (UP, DOWN, LEFT, RIGHT)
 
+
 class GeomTestCase(unittest.TestCase):
     def testMinus(self):
         a = P(300, 100)
@@ -56,9 +57,10 @@ class GeomTestCase(unittest.TestCase):
         v = P(3, -4)
         self.assertEqual(P(15, -20), v.times(5))
 
+
 class EntityTestCase(unittest.TestCase):
     def testClosest(self):
-        o = mk_default_entity(p=P(100,50))
+        o = mk_default_entity(p=P(100, 50))
         e1 = mk_default_entity(p=P(130, 150))
         e2 = mk_default_entity(p=P(200, 25))
         closest = o.closest((e1, e2,))
@@ -70,9 +72,9 @@ class GameStateTestCase(unittest.TestCase):
         state = GameState(TEAM_LTR)
         w1, w2, o1, o2 = mk_default_wizards()
         state.update((w1, w2, o1, o2, mk_default_entity(), ))
-        self.assertSetEqual(set((w1, w2,)), set(state.get_all(ETYPE_WIZARD)))
-        self.assertSetEqual(set((o1, o2,)), set(state.get_all(ETYPE_OPPONENT)))
-        self.assertSetEqual(set((w1, w2, o1, o2,)), set(state.get_all(ETYPE_WIZARD, ETYPE_OPPONENT)))
+        self.assertSetEqual({w1, w2}, set(state.get_all(ETYPE_WIZARD)))
+        self.assertSetEqual({o1, o2}, set(state.get_all(ETYPE_OPPONENT)))
+        self.assertSetEqual({w1, w2, o1, o2}, set(state.get_all(ETYPE_WIZARD, ETYPE_OPPONENT)))
 
     def testRemovalOnUpdate(self):
         state = GameState(TEAM_LTR)

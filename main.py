@@ -19,7 +19,7 @@ class P(object):
         self.x, self.y = x, y
 
     def __repr__(self):
-        return "P(%d,%d)"%(self.x, self.y,)
+        return "P(%d,%d)" % (self.x, self.y,)
 
     def __eq__(self, other):
         return (self.x, self.y,) == (other.x, other.y,)
@@ -40,12 +40,13 @@ class P(object):
         return (self.x - other.x) ** 2 + (self.y - other.y) ** 2
 
     def dists(self, others):
-        return [ {'e': other, 'dist': self.dist(other)} for other in others ]
+        return [{'e': other, 'dist': self.dist(other)} for other in others]
 
 
 class Cmd(object):
     def __str__(self):
         raise Exception("Uninitialized command!")
+
 
 class CmdMove(Cmd):
     def __init__(self, target, thrust):
@@ -54,6 +55,7 @@ class CmdMove(Cmd):
 
     def __str__(self):
         return "MOVE %d %d %d" % (self.target.x, self.target.y, self.thrust,)
+
 
 class CmdThrow(Cmd):
     def __init__(self, aim, thrust):
@@ -88,7 +90,7 @@ MAX_THROW_POWER = 500
 TEAM_LTR = 0
 TEAM_RTL = 1
 
-CMD_CLUELESS = CmdMove(P(MAPW//2,MAPH//2), 42)
+CMD_CLUELESS = CmdMove(P(MAPW//2, MAPH//2), 42)
 APPROX_THROW_DIST = 600
 
 
@@ -102,6 +104,7 @@ def generate_directional_coordinates(startdeg, enddeg, step):
     return directions
 THROW_DIRECTIONS = generate_directional_coordinates(0, 360, 10)
 
+
 class Entity(object):
     def __init__(self, entity_id, entity_type, p, v, state):
         self.entity_id, self.entity_type = entity_id, entity_type
@@ -110,17 +113,18 @@ class Entity(object):
 
     def closest(self, others):
         if not others:
-            fake_entity = Entity(-1, ETYPE_NONE, P(MAPW//2, MAPH//2), P(0,0), 0)
+            fake_entity = Entity(-1, ETYPE_NONE, P(MAPW//2, MAPH//2), P(0, 0), 0)
             return fake_entity
         others = [{'entity': e, 'dist': e.p.dist(self.p)} for e in others]
         by_dist = sorted(others, key=lambda pair: pair['dist'])
         return by_dist[0]['entity']
 
     def __str__(self):
-        return "%s%d@%d,%d"%(self.entity_type, self.entity_id, self.p.x, self.p.y)
+        return "%s%d@%d,%d" % (self.entity_type, self.entity_id, self.p.x, self.p.y)
+
 
 class GameState(object):
-    def __init__(self, my_team_id, throw_directions = generate_directional_coordinates(0, 360, 10)):
+    def __init__(self, my_team_id, throw_directions=generate_directional_coordinates(0, 360, 10)):
         self.my_team_id = my_team_id
         self.entities = dict([(etype, {}) for etype in ETYPES])
         self.wizards = {}
@@ -140,7 +144,7 @@ class GameState(object):
 
     def get_all(self, *entity_types):
         entities = []
-        for l in [ list(self.entities[etype].values()) for etype in entity_types ]:
+        for l in [list(self.entities[etype].values()) for etype in entity_types]:
             entities.extend(l)
         return entities
 
@@ -152,9 +156,9 @@ class GameState(object):
 
     def aim_from(self, pt):
         obst = self.get_all(ETYPE_OPPONENT, ETYPE_BLUDGER)
-        opts = [ self.guess_throw(pt, d) for d in self.throw_directions ]
-        opts = [ {'goal': opt, 'score': self.score_for_snafflepos(opt)} for opt in opts ]
-        best_opt = max(opts, key=lambda x:x['score'])
+        opts = [self.guess_throw(pt, d) for d in self.throw_directions]
+        opts = [{'goal': opt, 'score': self.score_for_snafflepos(opt)} for opt in opts]
+        best_opt = max(opts, key=lambda x: x['score'])
         return best_opt['goal']
 
     def set_targets(self):
@@ -188,7 +192,7 @@ class GameState(object):
                 if wiz not in dists or target not in dists[wiz]:
                     dists[wiz][target] = target.dist(wiz.p)
                 pd += dists[wiz][target] 
-            permutations.append({'d': pd, 'p':p})
+            permutations.append({'d': pd, 'p': p})
 
         permutations.sort(key=lambda pair: pair['d'])
         best = permutations[0]['p']
@@ -228,8 +232,6 @@ class GameLogic(object):
     def execute():
         my_team_id = int(input())  # if 0 you need to score on the right of the map, if 1 you need to score on the left
         gamestate = GameState(my_team_id)
-        gamestate.configure_throw_directions(THROW_DIRECTIONS)
-        goal = gamestate.get_goal()
 
         # game loop
         while True:
@@ -268,4 +270,3 @@ class GameLogic(object):
 
 if __name__ == "__main__":
     GameLogic().execute()
-
