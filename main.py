@@ -95,6 +95,7 @@ APPROX_THROW_DIST = 600
 GOAL_LINE_PROXIMITY = APPROX_THROW_DIST
 
 
+
 def generate_directional_coordinates(startdeg, enddeg, step):
     directions = []
     for dg in range(startdeg, enddeg, step):
@@ -152,8 +153,13 @@ class GameState(object):
     def guess_throw(self, pt, d):
         return pt.plus(d.times(APPROX_THROW_DIST))
 
-    def score_for_snafflepos(self, pt):
-        return 10000 / (1 + pt.dist(self.get_goal()))
+    def score_for_snafflepos(self, pt, obst):
+        SCOREMAX_DIST = 20000 * 20000
+        SNAFFLE_AIM_WEIGHT_GOALDIST = 1000
+        SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
+        goal_dist = SCOREMAX_DIST / (1 + pt.dist(self.get_goal())) ** 2
+        obst_dist = sum([SCOREMAX_DIST / (1 + pt.dist(obs.p)) ** 2 for obs in obst])/len(obst) if obst else 0
+        return SNAFFLE_AIM_WEIGHT_GOALDIST *goal_dist - SNAFFLE_AIM_WEIGHT_OBSTACLEDIST * obst_dist
 
     def aim_from(self, pt):
         if pt.dist(self.get_goal()) < GOAL_LINE_PROXIMITY:
@@ -161,7 +167,7 @@ class GameState(object):
 
         obst = self.get_all(ETYPE_OPPONENT, ETYPE_BLUDGER)
         opts = [self.guess_throw(pt, d) for d in self.throw_directions]
-        opts = [{'goal': opt, 'score': self.score_for_snafflepos(opt)} for opt in opts]
+        opts = [{'goal': opt, 'score': self.score_for_snafflepos(opt, obst)} for opt in opts]
         best_opt = max(opts, key=lambda x: x['score'])
         return best_opt['goal']
 

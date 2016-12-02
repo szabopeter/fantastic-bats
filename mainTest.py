@@ -38,7 +38,7 @@ def mk_default_wizards():
     return wiz1, wiz2, op1, op2
 
 
-RIGHT, UP, LEFT, DOWN = generate_directional_coordinates(0, 360, 90)
+RIGHT, DOWN, LEFT, UP = generate_directional_coordinates(0, 360, 90)
 simplified_throwing_directions = (UP, DOWN, LEFT, RIGHT)
 
 
@@ -149,7 +149,7 @@ class GameStateTestCase(unittest.TestCase):
 
     def testThrowingSafely(self):
         state = GameState(TEAM_LTR, simplified_throwing_directions)
-        same_pt = P(5000,2000)
+        same_pt = P(5000, 2000)
         wiz, wiz2, op1, _ = mk_default_wizards()
         snaf = mk_default_entity(p=same_pt)
         wiz.p, wiz.state, wiz.target = same_pt, STATE_WITH_SNAFFLE, snaf
@@ -158,7 +158,7 @@ class GameStateTestCase(unittest.TestCase):
         state.set_targets()
         expected_aim = state.guess_throw(same_pt, DOWN)
         self.assertIsInstance(wiz.cmd, CmdThrow)
-        #self.assertEqual(expected_aim, wiz.cmd.aim)
+        self.assertEqual(expected_aim, wiz.cmd.aim)
 
     def testObliviate(self):
         pass
