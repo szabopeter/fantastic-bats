@@ -13,6 +13,26 @@ def dbg(msg):
 # Grab Snaffles and try to throw them through the opponent's goal!
 # Move towards a Snaffle and use your team id to determine where you need to throw it.
 
+class RunConf(object):
+    def __init__(self, throw_dist=1200, throw_directions=None):
+        self.APPROX_THROW_DIST = throw_dist
+        self.GOAL_LINE_PROXIMITY = throw_dist
+        if not throw_directions:
+            throw_directions = generate_directional_coordinates(0, 360, 10)
+        self.throw_directions = throw_directions
+
+        self.SCOREMAX_DIST = 20000 * 20000
+        # POS16 (THROWDIST = 600)
+        # SNAFFLE_AIM_WEIGHT_GOALDIST = 1000
+        # SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
+
+        # POS38 (THROWDIST = 600)
+        # POS19 (THROWDIST = 900)
+        # POS44 (THROWDIST = 1100)
+        # POS8 (THROWDIST = 1200)
+        # POS61 (THROWDIST = 1500)
+        self.SNAFFLE_AIM_WEIGHT_GOALDIST = 100
+        self.SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
 
 class P(object):
     def __init__(self, x, y):
@@ -90,9 +110,8 @@ MAX_THROW_POWER = 500
 TEAM_LTR = 0
 TEAM_RTL = 1
 
+
 CMD_CLUELESS = CmdMove(P(MAPW//2, MAPH//2), 42)
-APPROX_THROW_DIST = 600
-GOAL_LINE_PROXIMITY = APPROX_THROW_DIST
 
 
 
@@ -126,13 +145,16 @@ class Entity(object):
 
 
 class GameState(object):
-    def __init__(self, my_team_id, throw_directions=generate_directional_coordinates(0, 360, 10)):
+    def __init__(self, my_team_id, config=None, throw_directions=generate_directional_coordinates(0, 360, 10)):
+        if not config:
+            config = RunConf()
+        self.config = config
         self.my_team_id = my_team_id
         self.entities = dict([(etype, {}) for etype in ETYPES])
         self.wizards = {}
         self.snaffles = {}
         self.mana = 0
-        self.throw_directions = throw_directions
+        self.throw_directions = config.throw_directions
         # IMPROVEMENT: count opponent mana (complex)
 
     def update_entity(self, entity):
@@ -151,27 +173,19 @@ class GameState(object):
         return entities
 
     def guess_throw(self, pt, d):
-        return pt.plus(d.times(APPROX_THROW_DIST))
+        return pt.plus(d.times(self.config.APPROX_THROW_DIST))
+
+    def dist_score(self, p1, p2):
+        return self.config.SCOREMAX_DIST / (1 + p1.dist(p2)) ** 2
 
     def score_for_snafflepos(self, pt, obst):
-        SCOREMAX_DIST = 20000 * 20000
-        # POS16 (THROWDIST = 600)
-        # SNAFFLE_AIM_WEIGHT_GOALDIST = 1000
-        # SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
-
-        # POS38 (THROWDIST = 600)
-        # POS19 (THROWDIST = 900)
-        # POS44 (THROWDIST = 1100)
-        # POS8 (THROWDIST = 1200)
-        # POS61 (THROWDIST = 1500)
-        SNAFFLE_AIM_WEIGHT_GOALDIST = 100
-        SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
-        goal_dist = SCOREMAX_DIST / (1 + pt.dist(self.get_goal())) ** 2
-        obst_dist = sum([SCOREMAX_DIST / (1 + pt.dist(obs.p)) ** 2 for obs in obst])/len(obst) if obst else 0
-        return SNAFFLE_AIM_WEIGHT_GOALDIST *goal_dist - SNAFFLE_AIM_WEIGHT_OBSTACLEDIST * obst_dist
+        goal_dist = self.dist_score(pt, self.get_goal())
+        obst_dist = sum([self.dist_score(pt, obs.p) for obs in obst])/len(obst) if obst else 0
+        return self.config.SNAFFLE_AIM_WEIGHT_GOALDIST * goal_dist \
+            - self.config.SNAFFLE_AIM_WEIGHT_OBSTACLEDIST * obst_dist
 
     def aim_from(self, pt):
-        if pt.dist(self.get_goal()) < GOAL_LINE_PROXIMITY:
+        if pt.dist(self.get_goal()) < self.config.GOAL_LINE_PROXIMITY:
             return self.get_goal()
 
         obst = self.get_all(ETYPE_OPPONENT, ETYPE_BLUDGER)
@@ -250,7 +264,7 @@ class GameLogic(object):
     @staticmethod
     def execute():
         my_team_id = int(input())  # if 0 you need to score on the right of the map, if 1 you need to score on the left
-        gamestate = GameState(my_team_id)
+        gamestate = GameState(my_team_id, config=RunConf())
 
         # game loop
         while True:

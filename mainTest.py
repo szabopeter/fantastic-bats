@@ -124,7 +124,8 @@ class GameStateTestCase(unittest.TestCase):
         self.assertEqual(halfway.p, wiz2.cmd.target, "%s != %s"%(halfway, wiz2.cmd, ))
 
     def testThrowing(self):
-        state = GameState(TEAM_LTR, simplified_throwing_directions)
+        config = RunConf(throw_directions=simplified_throwing_directions)
+        state = GameState(TEAM_LTR, config)
         same_pt = P(5000,2000)
         wiz, wiz2, _, _ = mk_default_wizards()
         snaf = mk_default_entity(p=same_pt)
@@ -136,7 +137,8 @@ class GameStateTestCase(unittest.TestCase):
         self.assertEqual(expected_aim, wiz.cmd.aim)
 
     def testThrowingFromGoalLine(self):
-        state = GameState(TEAM_LTR, generate_directional_coordinates(0, 360, 45))
+        config = RunConf(throw_directions=generate_directional_coordinates(0, 360, 45))
+        state = GameState(TEAM_LTR, config)
         goal = state.get_goal()
         same_pt = goal.minus(P(20, 300))
         wiz, wiz2, _, _ = mk_default_wizards()
@@ -148,12 +150,13 @@ class GameStateTestCase(unittest.TestCase):
         self.assertEqual(goal, wiz.cmd.aim)
 
     def testThrowingSafely(self):
-        state = GameState(TEAM_LTR, simplified_throwing_directions)
+        config = RunConf(throw_directions=simplified_throwing_directions)
+        state = GameState(TEAM_LTR, config)
         same_pt = P(5000, 2000)
         wiz, wiz2, op1, _ = mk_default_wizards()
         snaf = mk_default_entity(p=same_pt)
         wiz.p, wiz.state, wiz.target = same_pt, STATE_WITH_SNAFFLE, snaf
-        op1.p = P(6000, 2000)
+        op1.p = P(7000, 2000)
         state.update((wiz, wiz2, op1, snaf))
         state.set_targets()
         expected_aim = state.guess_throw(same_pt, DOWN)
