@@ -14,7 +14,7 @@ def dbg(msg):
 # Move towards a Snaffle and use your team id to determine where you need to throw it.
 
 class RunConf(object):
-    def __init__(self, throw_dist=1200, throw_directions=None, bludger_close=300):
+    def __init__(self, throw_dist=1200, throw_directions=None, bludger_close=900):
         self.APPROX_THROW_DIST = throw_dist
         self.GOAL_LINE_PROXIMITY = throw_dist
         if not throw_directions:
@@ -93,10 +93,7 @@ class CmdSpell(Cmd):
         self.word = word
 
     def __str__(self):
-        return "%s %d" % (self.word, self.target, )
-
-    def mana(self):
-        return self.__class__.mana
+        return "%s %d" % (self.word, self.target.entity_id, )
 
 
 class CmdObliviate(CmdSpell):
@@ -237,7 +234,7 @@ class GameState(object):
         if not targets:
             return
 
-        random_target = targets[0] 
+        random_target = targets[0]
 
         while len(targets) < len(wizards):
             targets.append(random_target)
@@ -249,7 +246,7 @@ class GameState(object):
                 target = p[i]
                 if wiz not in dists or target not in dists[wiz]:
                     dists[wiz][target] = target.dist(wiz.p)
-                pd += dists[wiz][target] 
+                pd += dists[wiz][target]
             permutations.append({'d': pd, 'p': p})
 
         permutations.sort(key=lambda pair: pair['d'])
@@ -259,7 +256,7 @@ class GameState(object):
 
     def bludger_close(self, wizard, bludgers):
         for b in bludgers:
-            if b.p.dist(wizard.p) < self.config.BLUDGER_CLOSE:
+            if b.p.plus(b.v).dist(wizard.p) < self.config.BLUDGER_CLOSE:
                 return b
         return None
 
@@ -330,8 +327,8 @@ class GameLogic(object):
                 # i.e.: "MOVE x y thrust" or "THROW x y power"
                 if wiz.cmd:
                     print(str(wiz.cmd))
-                    if is_instance(wiz.cmd, CmdSpell):
-                        gamestate.draw_mana(wiz.cmd.mana())
+                    if isinstance(wiz.cmd, CmdSpell):
+                        gamestate.draw_mana(wiz.cmd.mana)
                 else:
                     print(CMD_CLUELESS)
                     dbg("Nobody expects the spanish inquisition.")
