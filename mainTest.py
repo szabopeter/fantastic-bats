@@ -92,7 +92,9 @@ class GameStateTestCase(unittest.TestCase):
         snaffle = mk_default_entity(p=P(6000, 2000))
         state.update((wiz1, wiz2, snaffle))
         state.set_targets()
+        self.assertIsInstance(wiz1.cmd, CmdMove)
         self.assertEqual(snaffle.p, wiz1.cmd.target)
+        self.assertIsInstance(wiz2.cmd, CmdMove)
         self.assertEqual(snaffle.p, wiz2.cmd.target)
 
     def testChoosingNoTarget(self):
@@ -119,8 +121,8 @@ class GameStateTestCase(unittest.TestCase):
         state.update((wiz1, wiz2, snaf1, halfway,))
         state.set_targets()
         self.assertIsInstance(wiz1.cmd, CmdMove)
-        self.assertIsInstance(wiz2.cmd, CmdMove)
         self.assertEqual(snaf1.p, wiz1.cmd.target, "%s != %s"%(snaf1, wiz1.cmd, ))
+        self.assertIsInstance(wiz2.cmd, CmdMove)
         self.assertEqual(halfway.p, wiz2.cmd.target, "%s != %s"%(halfway, wiz2.cmd, ))
 
     def testThrowing(self):
@@ -163,9 +165,41 @@ class GameStateTestCase(unittest.TestCase):
         self.assertIsInstance(wiz.cmd, CmdThrow)
         self.assertEqual(expected_aim, wiz.cmd.aim)
 
-    def testObliviate(self):
-        pass
+    def testNoObliviateDueToMana(self):
         # Should execute obliviate when bludger is closing in.
+        state = GameState(TEAM_LTR)
+        state.mana = 2
+        wiz1, wiz2, _, _ = mk_default_wizards()
+        snaffle = mk_default_entity(p=P(6000, 2000))
+        bludger = mk_default_entity(p=wiz1.p.plus(P(20, 20)), entity_type=ETYPE_BLUDGER)
+        state.update((wiz1, wiz2, snaffle, bludger,))
+        state.set_targets()
+        self.assertIsInstance(wiz2.cmd, CmdMove)
+        self.assertIsInstance(wiz2.cmd, CmdMove)
+
+    def testNoObliviateDueToDistance(self):
+        # Should execute obliviate when bludger is closing in.
+        state = GameState(TEAM_LTR)
+        state.mana = 9
+        wiz1, wiz2, _, _ = mk_default_wizards()
+        snaffle = mk_default_entity(p=P(6000, 2000))
+        bludger = mk_default_entity(p=wiz1.p.plus(P(state.config.BLUDGER_CLOSE+1, 0)), entity_type=ETYPE_BLUDGER)
+        state.update((wiz1, wiz2, snaffle, bludger,))
+        state.set_targets()
+        self.assertIsInstance(wiz2.cmd, CmdMove)
+        self.assertIsInstance(wiz2.cmd, CmdMove)
+
+    def testObliviate(self):
+        # Should execute obliviate when bludger is closing in.
+        state = GameState(TEAM_LTR)
+        state.mana = 9
+        wiz1, wiz2, _, _ = mk_default_wizards()
+        snaffle = mk_default_entity(p=P(6000, 2000))
+        bludger = mk_default_entity(p=wiz1.p.plus(P(20, 20)), entity_type=ETYPE_BLUDGER)
+        state.update((wiz1, wiz2, snaffle, bludger,))
+        state.set_targets()
+        self.assertIsInstance(wiz1.cmd, CmdObliviate)
+        self.assertIsInstance(wiz2.cmd, CmdMove)
 
 
 if __name__ == '__main__':

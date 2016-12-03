@@ -14,12 +14,13 @@ def dbg(msg):
 # Move towards a Snaffle and use your team id to determine where you need to throw it.
 
 class RunConf(object):
-    def __init__(self, throw_dist=1200, throw_directions=None):
+    def __init__(self, throw_dist=1200, throw_directions=None, bludger_close=300):
         self.APPROX_THROW_DIST = throw_dist
         self.GOAL_LINE_PROXIMITY = throw_dist
         if not throw_directions:
             throw_directions = generate_directional_coordinates(0, 360, 10)
         self.throw_directions = throw_directions
+        self.BLUDGER_CLOSE = bludger_close
 
         self.SCOREMAX_DIST = 20000 * 20000
         # POS16 (THROWDIST = 600)
@@ -84,6 +85,25 @@ class CmdThrow(Cmd):
 
     def __str__(self):
         return "THROW %d %d %d" % (self.aim.x, self.aim.y, self.thrust,)
+
+
+class CmdSpell(Cmd):
+    def __init__(self, word, target):
+        self.target = target
+        self.word = word
+
+    def __str__(self):
+        return "%s %d" % (self.word, self.target, )
+
+    def mana(self):
+        return self.__class__.mana
+
+
+class CmdObliviate(CmdSpell):
+    mana = 5
+    def __init__(self, target):
+        CmdSpell.__init__(self, "OBLIVIATE", target)
+
 
 MAPW = 16001
 MAPH = 7501
@@ -197,12 +217,17 @@ class GameState(object):
     def set_targets(self):
         wizards = self.get_all(ETYPE_WIZARD)
         targets = [target.p for target in self.get_all(ETYPE_SNAFFLE)]
+        bludgers = self.get_all(ETYPE_BLUDGER)
 
         dists = {}
         for wiz in wizards[:]:
+            danger = self.bludger_close(wiz, bludgers)
             if wiz.state == STATE_WITH_SNAFFLE:
                 aim = self.aim_from(wiz.p)
                 wiz.cmd = CmdThrow(aim, MAX_THROW_POWER)
+                wizards.remove(wiz)
+            elif self.mana > CmdObliviate.mana and danger:
+                wiz.cmd = CmdObliviate(danger)
                 wizards.remove(wiz)
             else:
                 dists[wiz] = {}
@@ -232,6 +257,12 @@ class GameState(object):
         for i, wiz in enumerate(wizards):
             wiz.cmd = CmdMove(best[i], MAX_MOVE_POWER)
 
+    def bludger_close(self, wizard, bludgers):
+        for b in bludgers:
+            if b.p.dist(wizard.p) < self.config.BLUDGER_CLOSE:
+                return b
+        return None
+
     def get_goal(self):
         return POLE_RIGHT if self.my_team_id == TEAM_LTR else POLE_LEFT
 
@@ -255,6 +286,9 @@ class GameState(object):
             self.update_entity(entity)
         self.remove_marked_entities()
         self.mana += 1
+
+    def draw_mana(self, mana):
+        self.mana -= mana
 
 
 class GameLogic(object):
@@ -296,6 +330,8 @@ class GameLogic(object):
                 # i.e.: "MOVE x y thrust" or "THROW x y power"
                 if wiz.cmd:
                     print(str(wiz.cmd))
+                    if is_instance(wiz.cmd, CmdSpell):
+                        gamestate.draw_mana(wiz.cmd.mana())
                 else:
                     print(CMD_CLUELESS)
                     dbg("Nobody expects the spanish inquisition.")
