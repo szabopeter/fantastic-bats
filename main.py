@@ -14,7 +14,7 @@ def dbg(msg):
 # Move towards a Snaffle and use your team id to determine where you need to throw it.
 
 class RunConf(object):
-    def __init__(self, throw_dist=1200, throw_directions=None, bludger_close=900):
+    def __init__(self, throw_dist=1200, throw_directions=None, bludger_close=400):
         self.APPROX_THROW_DIST = throw_dist
         self.GOAL_LINE_PROXIMITY = throw_dist
         if not throw_directions:
@@ -34,6 +34,8 @@ class RunConf(object):
         # POS61 (THROWDIST = 1500)
         self.SNAFFLE_AIM_WEIGHT_GOALDIST = 100
         self.SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
+        self.WILLING_TO_SPEND_MANA = 25
+        self.TOO_FAR_TO_ACT = 8000
 
 class P(object):
     def __init__(self, x, y):
@@ -58,16 +60,14 @@ class P(object):
         return P(self.x * factor, self.y * factor)
 
     def dist(self, other):
-        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2)**0.5
+        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
 
     def dists(self, others):
         return [{'e': other, 'dist': self.dist(other)} for other in others]
 
-
 class Cmd(object):
     def __str__(self):
         raise Exception("Uninitialized command!")
-
 
 class CmdMove(Cmd):
     def __init__(self, target, thrust):
@@ -77,7 +77,6 @@ class CmdMove(Cmd):
     def __str__(self):
         return "MOVE %d %d %d" % (self.target.x, self.target.y, self.thrust,)
 
-
 class CmdThrow(Cmd):
     def __init__(self, aim, thrust):
         self.aim = aim
@@ -86,21 +85,41 @@ class CmdThrow(Cmd):
     def __str__(self):
         return "THROW %d %d %d" % (self.aim.x, self.aim.y, self.thrust,)
 
-
 class CmdSpell(Cmd):
     def __init__(self, word, target):
         self.target = target
         self.word = word
 
     def __str__(self):
-        return "%s %d" % (self.word, self.target.entity_id, )
-
+        return "%s %d" % (self.word, self.target.entity_id,)
 
 class CmdObliviate(CmdSpell):
     mana = 5
+    duration = 3
+
     def __init__(self, target):
         CmdSpell.__init__(self, "OBLIVIATE", target)
 
+class CmdPetrificus(CmdSpell):
+    mana = 10
+    duration = 1
+
+    def __init__(self, target):
+        CmdSpell.__init__(self, "PETRIFICUS", target)
+
+class CmdAccio(CmdSpell):
+    mana = 20
+    duration = 6
+
+    def __init__(self, target):
+        CmdSpell.__init__(self, "ACCIO", target)
+
+class CmdFlipendo(CmdSpell):
+    mana = 20
+    duration = 3
+
+    def __init__(self, target):
+        CmdSpell.__init__(self, "FLIPENDO", target)
 
 MAPW = 16001
 MAPH = 7501
@@ -119,7 +138,7 @@ ETYPE_WIZARD = "WIZARD"
 ETYPE_OPPONENT = "OPPONENT_WIZARD"
 ETYPE_SNAFFLE = "SNAFFLE"
 ETYPE_BLUDGER = "BLUDGER"
-ETYPES = (ETYPE_WIZARD, ETYPE_OPPONENT, ETYPE_SNAFFLE, ETYPE_BLUDGER, )
+ETYPES = (ETYPE_WIZARD, ETYPE_OPPONENT, ETYPE_SNAFFLE, ETYPE_BLUDGER,)
 
 MAX_MOVE_POWER = 150
 MAX_THROW_POWER = 500
@@ -127,10 +146,7 @@ MAX_THROW_POWER = 500
 TEAM_LTR = 0
 TEAM_RTL = 1
 
-
-CMD_CLUELESS = CmdMove(P(MAPW//2, MAPH//2), 42)
-
-
+CMD_CLUELESS = CmdMove(P(MAPW // 2, MAPH // 2), 42)
 
 def generate_directional_coordinates(startdeg, enddeg, step):
     directions = []
@@ -140,26 +156,26 @@ def generate_directional_coordinates(startdeg, enddeg, step):
         x = math.cos(rad)
         directions.append(P(x, y))
     return directions
-THROW_DIRECTIONS = generate_directional_coordinates(0, 360, 10)
 
+THROW_DIRECTIONS = generate_directional_coordinates(0, 360, 10)
 
 class Entity(object):
     def __init__(self, entity_id, entity_type, p, v, state):
         self.entity_id, self.entity_type = entity_id, entity_type
         self.p, self.v, self.state = p, v, state
         self.markedForRemoval = False
+        self.casting = 0
 
     def closest(self, others):
         if not others:
-            fake_entity = Entity(-1, ETYPE_NONE, P(MAPW//2, MAPH//2), P(0, 0), 0)
+            fake_entity = Entity(-1, ETYPE_NONE, P(MAPW // 2, MAPH // 2), P(0, 0), 0)
             return fake_entity
         others = [{'entity': e, 'dist': e.p.dist(self.p)} for e in others]
-        by_dist = sorted(others, key=lambda pair: pair['dist'])
-        return by_dist[0]['entity']
+        closest = min(others, key=lambda pair: pair['dist'])
+        return closest['entity']
 
     def __str__(self):
         return "%s%d@%d,%d" % (self.entity_type, self.entity_id, self.p.x, self.p.y)
-
 
 class GameState(object):
     def __init__(self, my_team_id, config=None, throw_directions=generate_directional_coordinates(0, 360, 10)):
@@ -181,6 +197,7 @@ class GameState(object):
         # if not entity.entity_id in self.entities[entity.entity_type]:
         self.entities[etype][eid] = entity
         entity.markedForRemoval = False
+        entity.casting -= 1
         entity.cmd = None
 
     def get_all(self, *entity_types):
@@ -197,9 +214,9 @@ class GameState(object):
 
     def score_for_snafflepos(self, pt, obst):
         goal_dist = self.dist_score(pt, self.get_goal())
-        obst_dist = sum([self.dist_score(pt, obs.p) for obs in obst])/len(obst) if obst else 0
+        obst_dist = sum([self.dist_score(pt, obs.p) for obs in obst]) / len(obst) if obst else 0
         return self.config.SNAFFLE_AIM_WEIGHT_GOALDIST * goal_dist \
-            - self.config.SNAFFLE_AIM_WEIGHT_OBSTACLEDIST * obst_dist
+               - self.config.SNAFFLE_AIM_WEIGHT_OBSTACLEDIST * obst_dist
 
     def aim_from(self, pt):
         if pt.dist(self.get_goal()) < self.config.GOAL_LINE_PROXIMITY:
@@ -216,20 +233,31 @@ class GameState(object):
         targets = [target.p for target in self.get_all(ETYPE_SNAFFLE)]
         bludgers = self.get_all(ETYPE_BLUDGER)
 
+        casting_this_turn = False
         dists = {}
         for wiz in wizards[:]:
             danger = self.bludger_close(wiz, bludgers)
+            dbg("DANGER: " + str(danger))
             if wiz.state == STATE_WITH_SNAFFLE:
                 aim = self.aim_from(wiz.p)
                 wiz.cmd = CmdThrow(aim, MAX_THROW_POWER)
                 wizards.remove(wiz)
-            elif self.mana > CmdObliviate.mana and danger:
+            elif self.mana > CmdObliviate.mana and wiz.casting < 1 and danger:
                 wiz.cmd = CmdObliviate(danger)
+                wiz.casting = wiz.cmd.duration
                 wizards.remove(wiz)
             else:
                 dists[wiz] = {}
                 for target in targets:
                     dists[wiz][target] = wiz.p.dist(target)
+                if not casting_this_turn \
+                        and wiz.casting < 1 \
+                        and min(dists[wiz].values()) >= self.config.TOO_FAR_TO_ACT \
+                        and self.mana > self.config.WILLING_TO_SPEND_MANA:
+                    wiz.cmd = self.choose_spell(wiz)
+                    wiz.casting = wiz.cmd.duration
+                    wizards.remove(wiz)
+                    casting_this_turn = True
 
         if not targets:
             return
@@ -260,6 +288,24 @@ class GameState(object):
                 return b
         return None
 
+    def choose_spell(self, wizard):
+        goal = self.get_goal()
+        closest = wizard.closest(self.get_all(ETYPE_SNAFFLE))
+        # snaffles = [ {'s': s, 'd': wizard.p.dist(s.pt)} for s in self.get_all(ETYPE_SNAFFLE) ]
+        # closest = min(snaffles, key=lambda pair:pair['d'])['s']
+        # farthest = max(snaffles, key=lambda pair:pair['d'])['s']
+        if goal.x > wizard.p.x and closest.p.x > wizard.p.x:
+            return CmdFlipendo(closest)
+        if goal.x < wizard.p.x and closest.p.x < wizard.p.x:
+            return CmdFlipendo(closest)
+        if goal.x > wizard.p.x and closest.p.x < wizard.p.x:
+            return CmdAccio(closest)
+        if goal.x < wizard.p.x and closest.p.x > wizard.p.x:
+            return CmdAccio(closest)
+
+        ops = self.get_all(ETYPE_OPPONENT)
+        return CmdPetrificus(ops[0])
+
     def get_goal(self):
         return POLE_RIGHT if self.my_team_id == TEAM_LTR else POLE_LEFT
 
@@ -282,11 +328,12 @@ class GameState(object):
         for entity in entities:
             self.update_entity(entity)
         self.remove_marked_entities()
+        for e in self.get_all(ETYPE_WIZARD, ETYPE_SNAFFLE, ETYPE_OPPONENT, ETYPE_BLUDGER):
+            e.p = e.p.plus(e.v)
         self.mana += 1
 
     def draw_mana(self, mana):
         self.mana -= mana
-
 
 class GameLogic(object):
     def __init__(self):
@@ -332,7 +379,6 @@ class GameLogic(object):
                 else:
                     print(CMD_CLUELESS)
                     dbg("Nobody expects the spanish inquisition.")
-
 
 if __name__ == "__main__":
     GameLogic().execute()
