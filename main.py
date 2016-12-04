@@ -14,7 +14,7 @@ def dbg(msg):
 # Move towards a Snaffle and use your team id to determine where you need to throw it.
 
 class RunConf(object):
-    def __init__(self, throw_dist=1200, throw_directions=None, bludger_close=400):
+    def __init__(self, throw_dist=1200, throw_directions=None, bludger_close=900):
         self.APPROX_THROW_DIST = throw_dist
         self.GOAL_LINE_PROXIMITY = throw_dist
         if not throw_directions:
@@ -35,7 +35,7 @@ class RunConf(object):
         self.SNAFFLE_AIM_WEIGHT_GOALDIST = 100
         self.SNAFFLE_AIM_WEIGHT_OBSTACLEDIST = 1
         self.WILLING_TO_SPEND_MANA = 25
-        self.TOO_FAR_TO_ACT = 8000
+        self.TOO_FAR_TO_ACT = 6000
 
 class P(object):
     def __init__(self, x, y):
@@ -215,8 +215,13 @@ class GameState(object):
     def score_for_snafflepos(self, pt, obst):
         goal_dist = self.dist_score(pt, self.get_goal())
         obst_dist = sum([self.dist_score(pt, obs.p) for obs in obst]) / len(obst) if obst else 0
-        return self.config.SNAFFLE_AIM_WEIGHT_GOALDIST * goal_dist \
-               - self.config.SNAFFLE_AIM_WEIGHT_OBSTACLEDIST * obst_dist
+        score = self.config.SNAFFLE_AIM_WEIGHT_GOALDIST * goal_dist \
+                - self.config.SNAFFLE_AIM_WEIGHT_OBSTACLEDIST * obst_dist
+
+        if self.crosses_my_goalline(pt.x):
+            score = -100
+
+        return score
 
     def aim_from(self, pt):
         if pt.dist(self.get_goal()) < self.config.GOAL_LINE_PROXIMITY:
@@ -240,6 +245,7 @@ class GameState(object):
             dbg("DANGER: " + str(danger))
             if wiz.state == STATE_WITH_SNAFFLE:
                 aim = self.aim_from(wiz.p)
+                aim = aim.minus(wiz.v)
                 wiz.cmd = CmdThrow(aim, MAX_THROW_POWER)
                 wizards.remove(wiz)
             elif self.mana > CmdObliviate.mana and wiz.casting < 1 and danger:
@@ -308,6 +314,11 @@ class GameState(object):
 
     def get_goal(self):
         return POLE_RIGHT if self.my_team_id == TEAM_LTR else POLE_LEFT
+
+    def crosses_my_goalline(self, x):
+        if self.my_team_id == TEAM_LTR:
+            return POLE_RIGHT.x - x < 50
+        return x < 50
 
     def mark_for_removal(self):
         for entity_type in self.entities.keys():
