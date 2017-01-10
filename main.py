@@ -357,6 +357,8 @@ class GameLogic(object):
 
         # game loop
         while True:
+            my_score, my_mana = [ int(x) for x in input().split() ]
+            opp_score, opp_mana = [ int(x) for x in input().split() ]
             entities = int(input())  # number of entities still in game
             to_update = []
             for i in range(entities):
